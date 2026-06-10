@@ -110,9 +110,9 @@ nessun costo e nessun account a pagamento.
 
    | Secret       | Valore                              |
    | ------------ | ----------------------------------- |
-   | `START_LAT`  | latitudine partenza (es. `41.8536`) |
-   | `START_LON`  | longitudine partenza (es. `12.5858`)|
-   | `START_NOME` | etichetta (es. `Casa`)              |
+   | `START_LAT`  | latitudine partenza (es. `27.0231`) |
+   | `START_LON`  | longitudine partenza (es. `15.1034`)|
+   | `START_NOME` | etichetta (es. `Lavoro`)            |
    | `TG_TOKEN`   | token del bot Telegram              |
    | `TG_CHAT_ID` | id chat Telegram                    |
 
