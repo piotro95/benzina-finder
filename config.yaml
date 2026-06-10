@@ -24,7 +24,7 @@ ricerca:
   carburante: "Benzina"    # tipo carburante (descCarburante nel dataset MIMIT)
   solo_self: true          # true = solo self-service
   max_giorni_freschezza: 3 # scarta prezzi comunicati da più di N giorni
-  top_n: 10                # quanti distributori mostrare nel report
+  top_n: 4                 # quanti distributori mostrare nel report
 
 # --- Score pesato ----------------------------------------------------
 # score = alpha * prezzo_norm + (1 - alpha) * distanza_norm

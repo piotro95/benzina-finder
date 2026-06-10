@@ -44,13 +44,41 @@ def _download(url: str, dest: str) -> None:
         fh.write(resp.content)
 
 
-def carica_csv(cfg: dict) -> pd.DataFrame:
-    """Scarica (o riusa da cache) i due CSV MIMIT e li unisce per idImpianto.
+def _leggi_csv_mimit(path: str) -> pd.DataFrame:
+    """Legge un CSV MIMIT gestendo la riga di intestazione variabile.
 
-    Ritorna un DataFrame con colonne normalizzate:
-        idImpianto, gestore, bandiera, nome, indirizzo, comune, provincia,
-        lat, lon, descCarburante, prezzo, isSelf, dtComu
+    I file MIMIT hanno una prima riga di avviso (es. 'Estrazione del ...;;')
+    e l'header vero alla riga successiva. A volte però l'header è già in
+    prima riga. Rileviamo la riga giusta cercando 'idImpianto'.
     """
+    # Leggi le prime righe grezze per trovare dov'è l'header
+    with open(path, "r", encoding="utf-8-sig", errors="replace") as fh:
+        prime = [next(fh, "") for _ in range(5)]
+    skip = 0
+    for i, riga in enumerate(prime):
+        if "idImpianto" in riga:
+            skip = i
+            break
+    df = pd.read_csv(
+        path, sep=_CSV_SEP, skiprows=skip, dtype=str,
+        engine="python", on_bad_lines="skip", encoding="utf-8-sig",
+    )
+    # Normalizza: togli spazi e BOM dai nomi colonna
+    df.columns = [str(c).strip().lstrip("\ufeff") for c in df.columns]
+    return df
+
+
+def _col(df: pd.DataFrame, *nomi: str) -> str | None:
+    """Trova il nome reale di una colonna fra varianti (case-insensitive)."""
+    lower = {c.lower(): c for c in df.columns}
+    for n in nomi:
+        if n.lower() in lower:
+            return lower[n.lower()]
+    return None
+
+
+def carica_csv(cfg: dict) -> pd.DataFrame:
+    """Scarica (o riusa da cache) i due CSV MIMIT e li unisce per idImpianto."""
     dati = cfg["dati"]
     cache_dir = dati["cache_dir"]
     p_prezzi = _cache_path(cache_dir, "prezzo_alle_8.csv")
@@ -61,42 +89,55 @@ def carica_csv(cfg: dict) -> pd.DataFrame:
     if not _is_fresh(p_anag, dati["cache_max_ore"]):
         _download(dati["url_anagrafica"], p_anag)
 
-    prezzi = pd.read_csv(
-        p_prezzi, sep=_CSV_SEP, skiprows=_CSV_SKIPROWS, dtype=str,
-        engine="python", on_bad_lines="skip",
-    )
-    anag = pd.read_csv(
-        p_anag, sep=_CSV_SEP, skiprows=_CSV_SKIPROWS, dtype=str,
-        engine="python", on_bad_lines="skip",
-    )
+    prezzi = _leggi_csv_mimit(p_prezzi)
+    anag = _leggi_csv_mimit(p_anag)
 
-    prezzi.columns = [c.strip() for c in prezzi.columns]
-    anag.columns = [c.strip() for c in anag.columns]
+    # Individua le colonne reali (robusto a maiuscole/spazi)
+    id_p = _col(prezzi, "idImpianto")
+    id_a = _col(anag, "idImpianto")
+    if id_p is None or id_a is None:
+        raise KeyError(
+            f"Colonna idImpianto non trovata. "
+            f"Prezzi={list(prezzi.columns)} Anag={list(anag.columns)}"
+        )
 
-    # Normalizza i nomi delle colonne dell'anagrafica (variano leggermente)
-    rinomina_anag = {
-        "idImpianto": "idImpianto",
-        "Gestore": "gestore",
-        "Bandiera": "bandiera",
-        "Nome Impianto": "nome",
-        "Indirizzo": "indirizzo",
-        "Comune": "comune",
-        "Provincia": "provincia",
-        "Latitudine": "lat",
-        "Longitudine": "lon",
-    }
-    anag = anag.rename(columns={k: v for k, v in rinomina_anag.items() if k in anag.columns})
+    # Rinomina su nomi standard
+    prezzi = prezzi.rename(columns={
+        id_p: "idImpianto",
+        _col(prezzi, "descCarburante", "carburante"): "descCarburante",
+        _col(prezzi, "prezzo"): "prezzo",
+        _col(prezzi, "isSelf"): "isSelf",
+        _col(prezzi, "dtComu"): "dtComu",
+    })
+    anag = anag.rename(columns={
+        id_a: "idImpianto",
+        _col(anag, "Gestore"): "gestore",
+        _col(anag, "Bandiera"): "bandiera",
+        _col(anag, "Nome Impianto", "Nome"): "nome",
+        _col(anag, "Indirizzo"): "indirizzo",
+        _col(anag, "Comune"): "comune",
+        _col(anag, "Provincia"): "provincia",
+        _col(anag, "Latitudine"): "lat",
+        _col(anag, "Longitudine"): "lon",
+    })
 
     df = prezzi.merge(anag, on="idImpianto", how="inner")
 
     # Conversioni di tipo
-    df["prezzo"] = pd.to_numeric(df["prezzo"].str.replace(",", "."), errors="coerce")
-    df["lat"] = pd.to_numeric(df["lat"].astype(str).str.replace(",", "."), errors="coerce")
-    df["lon"] = pd.to_numeric(df["lon"].astype(str).str.replace(",", "."), errors="coerce")
+    df["prezzo"] = pd.to_numeric(
+        df["prezzo"].astype(str).str.replace(",", "."), errors="coerce")
+    df["lat"] = pd.to_numeric(
+        df["lat"].astype(str).str.replace(",", "."), errors="coerce")
+    df["lon"] = pd.to_numeric(
+        df["lon"].astype(str).str.replace(",", "."), errors="coerce")
     df["isSelf"] = df["isSelf"].astype(str).str.strip().isin(["1", "true", "True"])
-    df["dtComu"] = pd.to_datetime(df["dtComu"], format="%d/%m/%Y %H:%M:%S", errors="coerce")
+    df["dtComu"] = pd.to_datetime(
+        df["dtComu"], format="%d/%m/%Y %H:%M:%S", errors="coerce")
 
-    return df.dropna(subset=["prezzo", "lat", "lon", "dtComu"])
+    out = df.dropna(subset=["prezzo", "lat", "lon", "dtComu"])
+    print(f"[info] CSV MIMIT: {len(prezzi)} prezzi, {len(anag)} impianti, "
+          f"{len(out)} record validi dopo merge.")
+    return out
 
 
 def carica_api(cfg: dict) -> pd.DataFrame:
