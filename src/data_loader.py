@@ -45,25 +45,31 @@ def _download(url: str, dest: str) -> None:
 
 
 def _leggi_csv_mimit(path: str) -> pd.DataFrame:
-    """Legge un CSV MIMIT gestendo la riga di intestazione variabile.
+    """Legge un CSV MIMIT gestendo separatore e riga di intestazione variabili.
 
-    I file MIMIT hanno una prima riga di avviso (es. 'Estrazione del ...;;')
-    e l'header vero alla riga successiva. A volte però l'header è già in
-    prima riga. Rileviamo la riga giusta cercando 'idImpianto'.
+    I file MIMIT usano il separatore '|' (pipe), ma gestiamo anche ';' e ','
+    per robustezza. La prima riga è un avviso (es. 'Estrazione del ...'),
+    l'header vero è alla riga successiva: lo rileviamo cercando 'idImpianto'.
     """
-    # Leggi le prime righe grezze per trovare dov'è l'header
     with open(path, "r", encoding="utf-8-sig", errors="replace") as fh:
         prime = [next(fh, "") for _ in range(5)]
+
+    # Trova la riga dell'header (quella che contiene 'idImpianto')
     skip = 0
+    riga_header = prime[0]
     for i, riga in enumerate(prime):
         if "idImpianto" in riga:
             skip = i
+            riga_header = riga
             break
+
+    # Rileva il separatore guardando quale compare di più nell'header
+    sep = max(["|", ";", ","], key=lambda s: riga_header.count(s))
+
     df = pd.read_csv(
-        path, sep=_CSV_SEP, skiprows=skip, dtype=str,
+        path, sep=sep, skiprows=skip, dtype=str,
         engine="python", on_bad_lines="skip", encoding="utf-8-sig",
     )
-    # Normalizza: togli spazi e BOM dai nomi colonna
     df.columns = [str(c).strip().lstrip("\ufeff") for c in df.columns]
     return df
 
