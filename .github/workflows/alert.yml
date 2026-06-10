@@ -1,0 +1,46 @@
+name: Alert benzina
+
+# Esecuzione schedulata + possibilità di lancio manuale dalla tab Actions.
+on:
+  schedule:
+    # 06:30 UTC = 08:30 ora italiana (estate) / 07:30 (inverno).
+    # GitHub usa SEMPRE UTC: regola qui se vuoi un orario civile fisso.
+    - cron: "30 6 * * *"
+  workflow_dispatch: {}   # bottone "Run workflow" manuale
+
+# Permessi minimi: il job non scrive nulla nella repo.
+permissions:
+  contents: read
+
+# Evita run sovrapposti se uno è lento.
+concurrency:
+  group: alert-benzina
+  cancel-in-progress: false
+
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Esegui e invia su Telegram
+        env:
+          # Posizione: definita SOLO come Secret, mai nel codice.
+          START_LAT:  ${{ secrets.START_LAT }}
+          START_LON:  ${{ secrets.START_LON }}
+          START_NOME: ${{ secrets.START_NOME }}
+          # Credenziali bot Telegram.
+          TG_TOKEN:   ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        run: python main.py --telegram --no-export

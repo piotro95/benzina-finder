@@ -1,0 +1,17 @@
+# Cache dati MIMIT (si riscaricano da soli)
+data_cache/
+# Output report
+output/
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Config locale con posizione reale (uso da PC, NON versionare)
+config.local.yaml

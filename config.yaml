@@ -1,0 +1,46 @@
+# =====================================================================
+# benzina-finder — Configurazione
+# =====================================================================
+# Modifica questo file per cambiare punto di partenza, raggio e pesi.
+# Nessuna modifica al codice necessaria.
+# =====================================================================
+
+# --- Posizione di partenza -------------------------------------------
+# NB: per uso pubblico la posizione reale NON va messa qui (questo file
+# è versionato). Lascia i placeholder e definisci le coordinate tramite:
+#   - variabili d'ambiente START_LAT / START_LON / START_NOME, oppure
+#   - GitHub Secrets (vedi .github/workflows/alert.yml), oppure
+#   - un file locale config.local.yaml (gitignored), oppure
+#   - flag CLI --lat --lon.
+# L'ambiente ha la precedenza sul file.
+posizione:
+  nome: "Posizione (definita via env/secret)"
+  lat: 0.0
+  lon: 0.0
+
+# --- Parametri di ricerca --------------------------------------------
+ricerca:
+  raggio_km: 10            # raggio massimo di ricerca
+  carburante: "Benzina"    # tipo carburante (descCarburante nel dataset MIMIT)
+  solo_self: true          # true = solo self-service
+  max_giorni_freschezza: 3 # scarta prezzi comunicati da più di N giorni
+  top_n: 10                # quanti distributori mostrare nel report
+
+# --- Score pesato ----------------------------------------------------
+# score = alpha * prezzo_norm + (1 - alpha) * distanza_norm
+#   alpha = 1.0  -> conta solo il prezzo
+#   alpha = 0.0  -> conta solo la distanza
+#   alpha = 0.7  -> compromesso orientato al prezzo (default)
+# prezzo_norm e distanza_norm sono normalizzati min-max sui candidati.
+score:
+  alpha: 0.7
+
+# --- Sorgenti dati ---------------------------------------------------
+# Fonte primaria: open data CSV MIMIT (contiene dtComu per freschezza)
+# Fallback: API ospzApi/search/zone (se i CSV non sono raggiungibili)
+dati:
+  url_prezzi: "https://www.mimit.gov.it/images/exportCSV/prezzo_alle_8.csv"
+  url_anagrafica: "https://www.mimit.gov.it/images/exportCSV/anagrafica_impianti_attivi.csv"
+  api_fallback: "https://carburanti.mise.gov.it/ospzApi/search/zone"
+  cache_dir: "data_cache"
+  cache_max_ore: 12        # riusa i CSV scaricati se più recenti di N ore
