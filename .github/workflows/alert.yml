@@ -5,7 +5,7 @@ on:
   schedule:
     # 06:30 UTC = 08:30 ora italiana (estate) / 07:30 (inverno).
     # GitHub usa SEMPRE UTC: regola qui se vuoi un orario civile fisso.
-    - cron: "30 6 * * *"
+    - cron: "30 7 * * *"
   workflow_dispatch: {}   # bottone "Run workflow" manuale
 
 # Permessi minimi: il job non scrive nulla nella repo.
