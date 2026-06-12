@@ -28,12 +28,12 @@ jobs:
       - name: Verifica Python
         env:
           PYTHON_EXE: ${{ secrets.PYTHON_EXE }}
-        run: & "$env:PYTHON_EXE" --version
+        run: '& "$env:PYTHON_EXE" --version'
 
       - name: Install deps
         env:
           PYTHON_EXE: ${{ secrets.PYTHON_EXE }}
-        run: & "$env:PYTHON_EXE" -m pip install --user -r requirements.txt
+        run: '& "$env:PYTHON_EXE" -m pip install --user -r requirements.txt'
 
       - name: Esegui e invia su Telegram
         env:
@@ -43,4 +43,4 @@ jobs:
           START_NOME: ${{ secrets.START_NOME }}
           TG_TOKEN:   ${{ secrets.TG_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
-        run: & "$env:PYTHON_EXE" main.py --telegram --no-export
+        run: '& "$env:PYTHON_EXE" main.py --telegram --no-export'
