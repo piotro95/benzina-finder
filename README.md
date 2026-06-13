@@ -110,14 +110,66 @@ nessun costo e nessun account a pagamento.
 
    | Secret       | Valore                              |
    | ------------ | ----------------------------------- |
-   | `START_LAT`  | latitudine partenza (es. `27.0231`) |
-   | `START_LON`  | longitudine partenza (es. `15.1034`)|
-   | `START_NOME` | etichetta (es. `Lavoro`)            |
+   | `START_LAT`  | latitudine partenza (es. `41.8902`) |
+   | `START_LON`  | longitudine partenza (es. `12.4922`)|
+   | `START_NOME` | etichetta (es. `Casa`)              |
    | `TG_TOKEN`   | token del bot Telegram              |
    | `TG_CHAT_ID` | id chat Telegram                    |
 
 4. L'orario è in **UTC** nel cron (`30 6 * * *` = 08:30 ora legale italiana).
    Regolalo nel file se vuoi un orario civile fisso.
+
+## Automazione locale (Windows Task Scheduler) — consigliata
+
+GitHub Actions con cron + runner self-hosted soffre di un bug noto di
+GitHub: i job schedulati possono restare "in coda" indefinitamente anche
+con il runner online, e vengono eseguiti solo dopo un trigger manuale.
+Per un alert quotidiano affidabile, la soluzione è eseguire lo script
+**localmente**, tramite Task Scheduler di Windows. GitHub Actions resta
+disponibile per i lanci manuali (`workflow_dispatch`).
+
+### Setup (una tantum)
+
+1. **Clona la repo** nella cartella dei tuoi progetti, es.:
+   ```powershell
+   cd "C:\Users\PietroRomei\OneDrive - Key to Energy srl\Documenti\Progetti_Py"
+   git clone https://github.com/piotro95/benzina-finder.git
+   cd benzina-finder
+   ```
+
+2. **Crea le credenziali locali** (mai versionate):
+   ```powershell
+   Copy-Item secrets.local.ps1.example secrets.local.ps1
+   notepad secrets.local.ps1
+   ```
+   Inserisci: percorso `PYTHON_EXE`, `START_LAT`/`START_LON`/`START_NOME`,
+   `TG_TOKEN`, `TG_CHAT_ID` (gli stessi valori usati nei GitHub Secrets).
+
+3. **Test manuale** prima di schedulare:
+   ```powershell
+   .\run_daily.ps1
+   ```
+   Controlla `run_daily.log` e verifica l'arrivo del messaggio Telegram.
+   Rilancialo una seconda volta: deve uscire subito con "Già eseguito oggi".
+
+4. **Crea l'attività in Task Scheduler** (Utilità di pianificazione —
+   non richiede privilegi di amministratore per un'attività utente):
+   - **Crea attività di base** → Nome: `Benzina Finder Daily`
+   - **Trigger**: *All'accesso* → in "Impostazioni avanzate" spunta
+     **"Ritarda attività per:"** e imposta `5 minuti`
+   - **Azione**: *Avvia un programma*
+     - Programma: `powershell.exe`
+     - Argomenti:
+       ```
+       -NoProfile -ExecutionPolicy Bypass -File "C:\Users\PietroRomei\OneDrive - Key to Energy srl\Documenti\Progetti_Py\benzina-finder\run_daily.ps1"
+       ```
+   - (Opzionale, per resilienza) Nella scheda **Impostazioni** dell'attività,
+     spunta *"Se l'attività non riesce, riavvia ogni:"* `30 minuti`,
+     *"Tentativi massimi:"* `3` — utile se al login la rete non è
+     ancora pronta.
+
+Da quel momento: ad ogni accesso al PC, dopo 5 minuti lo script controlla
+se ha già girato oggi; se no, esegue e invia il report su Telegram.
 
 ## Licenza
 

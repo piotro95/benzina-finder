@@ -5,7 +5,7 @@ on:
   schedule:
     # 06:30 UTC = 08:30 ora italiana (estate) / 07:30 (inverno).
     # GitHub usa SEMPRE UTC: regola qui se vuoi un orario civile fisso.
-    - cron: "30 7 * * *"
+    - cron: "30 6 * * *"
   workflow_dispatch: {}   # bottone "Run workflow" manuale
 
 # Permessi minimi: il job non scrive nulla nella repo.
@@ -19,28 +19,28 @@ concurrency:
 
 jobs:
   alert:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-        
-      - name: Verifica Python
-        env:
-          PYTHON_EXE: ${{ secrets.PYTHON_EXE }}
-        run: '& "$env:PYTHON_EXE" --version'
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
 
       - name: Install deps
-        env:
-          PYTHON_EXE: ${{ secrets.PYTHON_EXE }}
-        run: '& "$env:PYTHON_EXE" -m pip install --user -r requirements.txt'
+        run: pip install -r requirements.txt
 
       - name: Esegui e invia su Telegram
         env:
-          PYTHON_EXE: ${{ secrets.PYTHON_EXE }}
+          # Posizione: definita SOLO come Secret, mai nel codice.
           START_LAT:  ${{ secrets.START_LAT }}
           START_LON:  ${{ secrets.START_LON }}
           START_NOME: ${{ secrets.START_NOME }}
+          # Credenziali bot Telegram.
           TG_TOKEN:   ${{ secrets.TG_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
-        run: '& "$env:PYTHON_EXE" main.py --telegram --no-export'
+        run: python main.py --telegram --no-export

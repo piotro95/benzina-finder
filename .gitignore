@@ -15,3 +15,8 @@ venv/
 
 # Config locale con posizione reale (uso da PC, NON versionare)
 config.local.yaml
+
+# Automazione locale (Task Scheduler) — credenziali e stato, NON versionare
+secrets.local.ps1
+.last_run
+run_daily.log
